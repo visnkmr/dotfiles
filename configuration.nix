@@ -16,7 +16,6 @@ in
     [ # Include the results of the hardware scan.
       ./hardware-configuration.nix
     ];
-
   # Bootloader.
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
@@ -86,13 +85,29 @@ in
     #media-session.enable = true;
   };
 
-  hardware.nvidia.package = (config.boot.kernelPackages.nvidiaPackages.stable.overrideAttrs {
-    src = pkgs.fetchurl {
-      url = "https://download.nvidia.com/XFree86/Linux-x86_64/470.199.02/NVIDIA-Linux-x86_64-470.199.02.run";
-      sha256 = "1zb8swlb8f1l9l6bya64fwd12pk9z0x1lqj2bg1k5khivw721y7x";
-    };
-  });
+  # hardware.nvidia.package = (config.boot.kernelPackages.nvidiaPackages.stable.overrideAttrs {
+  #   src = pkgs.fetchurl {
+  #     url = "https://download.nvidia.com/XFree86/Linux-x86_64/470.199.02/NVIDIA-Linux-x86_64-470.199.02.run";
+  #     sha256 = "1zb8swlb8f1l9l6bya64fwd12pk9z0x1lqj2bg1k5khivw721y7x";
+  #   };
+  # });
+services.xserver = {
+    videoDrivers = [ "nvidia" ];
+    # export finalized xorg.conf to /etc/X11/xorg.conf
+    exportConfiguration = true;
+    # config = pkgs.lib.mkOverride 50 (builtins.readFile ./quadmon.conf);
+  };
 
+  # Unfortunately, upgrading to nixos 21.11 led to us getting the new 495.44
+  # driver, which breaks our configuration (boo NVIDIA). So, we are forced to
+  # use the older version (which works perfectly!). The configuration here is
+  # taken from this commit
+  # https://github.com/NixOS/nixpkgs/commit/f8d38db8d7c995e0e20ab6b4e48cac26c2ef0dfa.
+  # The instructions at https://nixos.wiki/wiki/Nvidia led me to this commit.
+  hardware.nvidia.package =
+    config.boot.kernelPackages.nvidiaPackages.legacy_470;
+
+# services.xserver.videoDrivers = [ “nvidia” ];
   # Enable touchpad support (enabled default in most desktopManager).
   # services.xserver.libinput.enable = true;
 
@@ -120,6 +135,11 @@ in
     distrobox
     vscode
     rustup
+    rust-analyzer
+    rustc
+    rustfmt
+    # rustup
+    vscode-extensions.llvm-org.lldb-vscode # for hx
     nix-software-center
     git
     gcc gdb
@@ -131,8 +151,16 @@ in
     fish
     chromium
     github-desktop
+    brave
+    libayatana-appindicator
+    joplin-desktop
   ];
 
+   nix.gc = {
+    automatic = true;
+    dates = "weekly";
+    options = "--delete-older-than 2d";
+  };
   # Some programs need SUID wrappers, can be configured further or are
   # started in user sessions.
   # programs.mtr.enable = true;
@@ -158,6 +186,6 @@ in
   # this value at the release version of the first install of this system.
   # Before changing this value read the documentation for this option
   # (e.g. man configuration.nix or on https://nixos.org/nixos/options.html).
-  system.stateVersion = "23.05"; # Did you read the comment?
+  system.stateVersion = "22.05"; # Did you read the comment?
 
 }
